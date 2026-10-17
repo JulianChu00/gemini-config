@@ -1,0 +1,139 @@
+
+# ====================================================
+#  Julian 🤍 Ryan's Private Network
+#  今天想去哪个半球散步？
+# ====================================================
+
+proxies:
+  - name: "Julian 🤍 Ryan"
+    network: tcp
+    port: 56144
+    server: 155.94.154.41
+    tls: false
+    type: vless
+    udp: true
+    uuid: 6529d12c-d4b9-4352-a50d-d7fc69eb38b4
+
+  # --- Gemini 专属通道 1：Hysteria 2 ---
+  - name: "Gemini ✦ Hysteria"
+    type: hysteria2
+    server: 134.195.101.75
+    port: 20000
+    ports: 20000-55000
+    mport: 20000-55000
+    password: ef52f9e3-4416-4422-89bc-bd9d26457803
+    udp: true
+    skip-cert-verify: true
+    sni: www.bing.com
+    fingerprint: be1733baf0e2db7a98689da3a2ff141c5075b9216a5c58cc9f5056e192eeb8c6
+
+  # --- Gemini 专属通道 2：VLESS + Reality ---
+  - name: "Gemini ✦ Vision"
+    type: vless
+    server: 134.195.101.76
+    port: 443
+    uuid: ef52f9e3-4416-4422-89bc-bd9d26457803
+    udp: true
+    tls: true
+    skip-cert-verify: false
+    flow: xtls-rprx-vision
+    client-fingerprint: ios
+    servername: cdn-dynmedia-1.microsoft.com
+    reality-opts:
+      public-key: BiwY7Que5N4TjVfseuMWWC2AO1U8G196O1fEFocOK0w
+      short-id: 8004932d
+
+  # --- Gemini 专属通道 3：VLESS + WebSocket + TLS ---
+  - name: "Gemini ✦ Core"
+    type: vless
+    server: cf3.yfjc.sbs
+    port: 443
+    uuid: ef52f9e3-4416-4422-89bc-bd9d26457803
+    udp: true
+    tls: true
+    skip-cert-verify: false
+    client-fingerprint: safari
+    servername: yfjc-us1.777036.xyz
+    network: ws
+    ws-opts:
+      path: /yfjc/aius1
+      headers:
+        Host: yfjc-us1.777036.xyz
+
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies:
+      - "Julian 🤍 Ryan"
+      - DIRECT
+
+  # 三个 Gemini 节点自动故障切换
+  - name: Gemini
+    type: fallback
+    url: "http://cp.cloudflare.com/generate_204"
+    interval: 300
+    proxies:
+      - "Gemini ✦ Hysteria"
+      - "Gemini ✦ Vision"
+      - "Gemini ✦ Core"
+
+rule-providers:
+  reject:
+    type: http
+    behavior: domain
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/reject.txt"
+    path: ./ruleset/loyalsoldier/reject.yaml
+    interval: 86400
+
+  proxy:
+    type: http
+    behavior: domain
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/proxy.txt"
+    path: ./ruleset/loyalsoldier/proxy.yaml
+    interval: 86400
+
+  direct:
+    type: http
+    behavior: domain
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/direct.txt"
+    path: ./ruleset/loyalsoldier/direct.yaml
+    interval: 86400
+
+  telegramcidr:
+    type: http
+    behavior: ipcidr
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/telegramcidr.txt"
+    path: ./ruleset/loyalsoldier/telegramcidr.yaml
+    interval: 86400
+
+  cncidr:
+    type: http
+    behavior: ipcidr
+    url: "https://raw.githubusercontent.com/Loyalsoldier/clash-rules/release/cncidr.txt"
+    path: ./ruleset/loyalsoldier/cncidr.yaml
+    interval: 86400
+
+rules:
+  # 1. 优先拦截广告和恶意域名
+  - RULE-SET,reject,REJECT
+
+  # 2. Gemini 专用规则
+  - DOMAIN-SUFFIX,gemini.google.com,Gemini
+  - DOMAIN-SUFFIX,googleapis.com,Gemini
+
+  # 3. 常见外网域名走代理
+  - RULE-SET,proxy,PROXY
+
+  # 4. 常见国内域名直连
+  - RULE-SET,direct,DIRECT
+
+  # 5. Telegram IP 走代理
+  - RULE-SET,telegramcidr,PROXY
+
+  # 6. 局域网和国内 IP 直连
+  - GEOIP,LAN,DIRECT
+  - GEOIP,CN,DIRECT
+  - RULE-SET,cncidr,DIRECT
+
+  # 7. 漏网之鱼，默认走代理
+  - MATCH,PROXY
